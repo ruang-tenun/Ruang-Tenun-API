@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
@@ -9,13 +10,22 @@ const port = 3000
 app.use(cors())
 // parse application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({extended: false}))
-
 // parse application/json
 app.use(bodyParser.json())
+app.use(cors({origin: '*'}))
+
+// initialize oauth google
+// google login route
+const googleAuth = require("./routes/googleAuth");
+app.use('/auth/google', googleAuth)
+
+// import route login
+const authLogin = require("./routes/auth");
+app.use('/api',authLogin)
 
 // import route posts
-const postRouter = require("./routes/posts");
-app.use("/api/posts", postRouter)
+const postRoute = require("./routes/posts");
+app.use("/api/posts", postRoute)
 
 // route
 app.get("/", (req, resp) => {
