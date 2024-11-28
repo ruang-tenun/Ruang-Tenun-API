@@ -1,5 +1,61 @@
 const express = require('express');
 const router = express.Router();
+const response = require('../response/response');
+const jwt = require('jsonwebtoken');
+
+const accessValidation = (req, res, next) => {
+  const { authorization } = req.headers;
+
+  if(!authorization){
+    return res.status(401).json({
+      status: 'fail',
+      message: 'needed token'
+    })
+  }
+
+  const token = authorization.split(' ')[1];
+  if(!token){
+    return res.status(401).json({
+      status: 'fail',
+      message: 'token is invalid'
+    })
+  }
+
+  const secret = process.env.JWT_SECRET
+
+  if(!secret){
+    console.error('JWT_SECRET is not defined in environment variables.');
+    return res.status(500).json({
+      message: 'Internal server error',
+    });
+  }
+
+  try {
+    const jwtDecode = jwt.verify(token, secret);
+
+    if(typeof jwtDecode == 'object' && jwtDecode.id && jwtDecode.name && jwtDecode.email && jwtDecode.address){
+      req.userData = {
+        id: jwtDecode.id,
+        name: jwtDecode.name,
+        email: jwtDecode.email,
+        address: jwtDecode.address,
+      }
+    } else {
+      return res.status(401).json({
+        status: 'fail',
+        message: 'token is invalid'
+      })
+    }
+  } catch (error) {
+    console.error('JWT verification error: ', error);
+    return res.status(401).json({
+      status: 'fail',
+      message: 'unauthorized'
+    })
+  }
+
+  next();
+}
 
 // import db
 const { body, validationResult } = require('express-validator');
@@ -9,21 +65,17 @@ const internalError = {
   message: 'Internal server error'
 }
 
-router.get('/', (req, res) => {
+router.get('/', accessValidation, (req, res) => {
   connection.query("SELECT * FROM posts ORDER BY id DESC", (err,  rows) => {
     if(err){
       return res.status(500).json(internalError);
     } else {
-      return res.status(200).json({
-        status: 'success',
-        message: "List Data Posts",
-        data: rows
-      })
+      return res.status(200).json(response('success', 'Get all data posts', rows, res))
     }
   })
 })
 
-router.post('/', [
+router.post('/', accessValidation, [
   // validation
   body('title').notEmpty().withMessage('Title is required'),
   body('content').notEmpty().withMessage('Content is required'),
@@ -55,7 +107,7 @@ router.post('/', [
   })
 })
 
-router.get("/(:id)", (req, res) => {
+router.get("/(:id)", accessValidation, (req, res) => {
   const id = req.params.id;
 
   connection.query(`SELECT * FROM posts WHERE id=${id}`, (err, row) => {
@@ -78,7 +130,7 @@ router.get("/(:id)", (req, res) => {
   })
 })
 
-router.put("/(:id)", [
+router.put("/(:id)", accessValidation, [
   body('title').notEmpty().withMessage('Title is required'),
   body('content').notEmpty().withMessage('Content is required'),
   body('description').notEmpty().withMessage('Description is required'),
@@ -120,7 +172,7 @@ router.put("/(:id)", [
   })
 })
 
-router.delete('/(:id)', (req, res) => {
+router.delete('/(:id)', accessValidation, (req, res) => {
   const id = req.params.id;
 
   connection.query("SELECT * FROM posts WHERE id = ?", id, (err, row) => {
