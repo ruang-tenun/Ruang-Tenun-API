@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const response = require('../response/response');
+const {PrismaClient} = require('@prisma/client')
+const prisma = new PrismaClient();
 const jwt = require('jsonwebtoken');
 
 const accessValidation = (req, res, next) => {
@@ -59,20 +61,20 @@ const accessValidation = (req, res, next) => {
 
 // import db
 const { body, validationResult } = require('express-validator');
-const connection = require('../config/database');
+const connection = require('../../config/database');
 const internalError = {
   status: 'fail',
   message: 'Internal server error'
 }
 
-router.get('/', accessValidation, (req, res) => {
-  connection.query("SELECT * FROM posts ORDER BY id DESC", (err,  rows) => {
-    if(err){
-      return res.status(500).json(internalError);
-    } else {
-      return res.status(200).json(response('success', 'Get all data posts', rows, res))
-    }
-  })
+router.get('/', accessValidation, async (req, res) => {
+  const result = await prisma.posts.findMany();
+
+  if(!result){
+    return res.status(500).json(internalError)
+  }
+
+  return res.status(200).json(response('success', 'Get all data posts', result, res));
 })
 
 router.post('/', accessValidation, [
@@ -80,7 +82,7 @@ router.post('/', accessValidation, [
   body('title').notEmpty().withMessage('Title is required'),
   body('content').notEmpty().withMessage('Content is required'),
   body('description').notEmpty().withMessage('Description is required'),
-], (req, res) => {
+], async (req, res) => {
   const errors = validationResult(req);
   
   if (!errors.isEmpty()) {
@@ -95,27 +97,39 @@ router.post('/', accessValidation, [
     description: req.body.description
   }
 
-  connection.query("INSERT INTO posts SET ?", data, (err, rows) => {
-    if(err){
-      return res.status(500).json(internalError)
-    }
-    return res.status(201).json({
-      status: 'success',
-      message: 'Insert data successfully',
-      data: rows[0]
-    })
-  })
+  let result = await prisma.posts.create({
+    data: data
+  });
+
+  if(!result){
+    return res.status(500).json(internalError);
+  }
+
+  return res.status(201).json(response('success', 'Insert data successfully', result, res));
+
+  // connection.query("INSERT INTO posts SET ?", data, (err, rows) => {
+  //   if(err){
+  //     return res.status(500).json(internalError)
+  //   }
+  //   return res.status(201).json({
+  //     status: 'success',
+  //     message: 'Insert data successfully',
+  //     data: rows[0]
+  //   })
+  // })
 })
 
-router.get("/(:id)", accessValidation, (req, res) => {
+router.get("/(:id)", accessValidation, async (req, res) => {
   const id = req.params.id;
 
-  connection.query(`SELECT * FROM posts WHERE id=${id}`, (err, row) => {
-    if(err){
-      return res.status(500).json()
-    }
+  try {
+    const result = await prisma.posts.findMany({
+      where: {
+        id: Number(id)
+      }
+    })
 
-    if(row.length <  1){
+    if(result.length <  1){
       return res.status(404).json({
         status: 'fail',
         message: 'Data post not found!'
@@ -125,16 +139,18 @@ router.get("/(:id)", accessValidation, (req, res) => {
     return res.status(200).json({
       status: 'success',
       message: 'Detail data Post',
-      data: row[0]
+      data: result
     })
-  })
+  } catch (error) {
+    return res.status(500).json(internalError)
+  }
 })
 
 router.put("/(:id)", accessValidation, [
   body('title').notEmpty().withMessage('Title is required'),
   body('content').notEmpty().withMessage('Content is required'),
   body('description').notEmpty().withMessage('Description is required'),
-],(req, res) => {
+], async (req, res) => {
   let errors = validationResult(req)
   
   if (!errors.isEmpty()) {
@@ -151,47 +167,86 @@ router.put("/(:id)", accessValidation, [
     description: req.body.description,
   }
 
-  connection.query(`SELECT * FROM posts WHERE id = ?`, id ,(err, row) => {
-    if(row.length < 1){
-      return res.status(404).json({
-        status: 'fail',
-        message: 'Data post not found!'
-      })
+  const checkId = await prisma.posts.findFirst({
+    where: {
+      id: Number(id)
     }
-
-    connection.query(`UPDATE posts SET ? WHERE id =? `, [data, id], (err, rows) => {
-      if(err){
-        return res.status(500).json(internalError)
-      }
-  
-      return res.status(200).json({
-        status: 'success',
-        message: 'updated data successfully',
-      })
-    })
   })
+
+  if(!checkId){
+    return res.status(404).json({
+      status: 'fail',
+      message: 'Data post not found'
+    });
+  }
+
+  const resultUpdate = await prisma.posts.update({
+    data: data,
+    where: {
+      id: Number(id)
+    }
+  });
+
+  if (!resultUpdate) {
+    return res.status(500).json(internalError)
+  }
+
+  return res.status(200).json({
+    status: 'success',
+    payload: resultUpdate,
+    message: 'updated data successfully',
+  })
+
+  // connection.query(`SELECT * FROM posts WHERE id = ?`, id ,(err, row) => {
+  //   if(row.length < 1){
+  //     return res.status(404).json({
+  //       status: 'fail',
+  //       message: 'Data post not found!'
+  //     })
+  //   }
+
+  //   connection.query(`UPDATE posts SET ? WHERE id =? `, [data, id], (err, rows) => {
+  //     if(err){
+  //       return res.status(500).json(internalError)
+  //     }
+  
+  //     return res.status(200).json({
+  //       status: 'success',
+  //       message: 'updated data successfully',
+  //     })
+  //   })
+  // })
 })
 
-router.delete('/(:id)', accessValidation, (req, res) => {
+router.delete('/(:id)', accessValidation, async (req, res) => {
   const id = req.params.id;
 
-  connection.query("SELECT * FROM posts WHERE id = ?", id, (err, row) => {
-    if(row.length < 1){
-      return res.status(404).json({
-        status: 'fail',
-        message: 'data post not found!'
-      })
+  const checkId = await prisma.posts.findFirst({
+    where: {
+      id: Number(id)
     }
+  })
 
-    connection.query("DELETE FROM posts WHERE id = ?", id, (err) => {
-      if(err){
-        return res.status(500).json(internalError)
-      }
-      return res.status(200).json({
-        status: 'success',
-        message: 'Deleted data post successfully'
-      })
+  if (!checkId) {
+    return res.status(404).json({
+      status: 'fail',
+      message: 'data post not found!'
     })
+  }
+
+  const deleteId = await prisma.posts.delete({
+    where: {
+      id: Number(id)
+    }
+  })
+
+  if(!deleteId){
+    return res.status(500).json(internalError)
+  }
+
+  return res.status(200).json({
+    status: 'success',
+    message: 'Deleted data post successfully'
   })
 })
 module.exports = router;
