@@ -8,6 +8,7 @@ const app = express()
 const port = 3000
 
 app.use(cors())
+app.use(express.json());
 // parse application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({extended: false}))
 // parse application/json
@@ -16,15 +17,15 @@ app.use(cors({origin: '*'}))
 
 // initialize oauth google
 // google login route
-const googleAuth = require("./routes/googleAuth");
+const googleAuth = require("./src/routes/googleAuth");
 app.use('/auth/google', googleAuth)
 
 // import route login
-const authLogin = require("./routes/auth");
+const authLogin = require("./src/routes/auth");
 app.use('/api',authLogin)
 
 // import route posts
-const postRoute = require("./routes/posts");
+const postRoute = require("./src/routes/posts");
 app.use("/api/posts", postRoute)
 
 // route

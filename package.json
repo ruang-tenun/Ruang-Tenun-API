@@ -2,16 +2,17 @@
   "name": "ruangtenun",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node index.js",
-    "start:dev": "nodemon index.js"
+    "start": "node app.js",
+    "start:dev": "nodemon app.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@prisma/client": "^5.22.0",
     "bcrypt": "^5.1.1",
     "body-parser": "^1.19.0",
     "cors": "^2.8.5",
@@ -23,6 +24,7 @@
     "mysql": "^2.18.1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.7"
+    "nodemon": "^3.1.7",
+    "prisma": "^5.22.0"
   }
 }
