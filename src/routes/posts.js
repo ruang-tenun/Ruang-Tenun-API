@@ -61,7 +61,6 @@ const accessValidation = (req, res, next) => {
 
 // import db
 const { body, validationResult } = require('express-validator');
-const connection = require('../../config/database');
 const internalError = {
   status: 'fail',
   message: 'Internal server error'

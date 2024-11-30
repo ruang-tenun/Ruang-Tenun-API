@@ -69,7 +69,7 @@ model sellers {
 
 model users {
   user_id    Int         @id @default(autoincrement())
-  name       String      @unique(map: "username") @db.VarChar(255)
+  username   String      @unique(map: "username") @db.VarChar(255)
   email      String      @unique(map: "email") @db.VarChar(255)
   password   String?     @db.VarChar(255)
   phone      String?     @db.VarChar(14)
