@@ -28,6 +28,14 @@ app.use('/api',authLogin)
 const postRoute = require("./src/routes/posts");
 app.use("/api/posts", postRoute)
 
+// import route category
+const categoryRoute = require('./src/routes/categories');
+app.use('/api/categories', categoryRoute);
+
+// import route product
+const productRoute = require('./src/routes/products');
+app.use('/api/products', productRoute);
+
 // route
 app.get("/", (req, resp) => {
   resp.status(200).json({

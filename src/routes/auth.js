@@ -1,18 +1,13 @@
 const router = require("express").Router();
 const connection = require("../../config/database");
 const bcrypt = require('bcrypt');
-const { nextFunction, Request, Response, Router } = require('express');
+const { nextFunction, Request, Response } = require('express');
 const { body, validationResult } = require("express-validator");
 const jwt = require('jsonwebtoken')
 const { jwtPayload } = require('jsonwebtoken');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-
-const formatMySQLDate = (date) => {
-  const dt = new Date(date);
-  const pad = (n) => (n < 10 ? '0' + n : n);
-  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())} ${pad(dt.getHours())}:${pad(dt.getMinutes())}:${pad(dt.getSeconds())}`;
-}
+const formatMySQLDate = require("../middlewares/formattedDateSql");
 
 router.post('/register/seller', [
   body('name').notEmpty().withMessage('name is required'),
@@ -64,12 +59,12 @@ router.post('/register/seller', [
 });
 
 router.post('/register', [
-  body('name').notEmpty().withMessage('name is required'),
+  body('username').notEmpty().withMessage('username is required'),
   body('email').notEmpty().withMessage('email is required'),
   body('password').notEmpty().withMessage('password is required'),
   body('phone').notEmpty().withMessage('telp is required'),
   body('address').notEmpty().withMessage('address is required')
-],async (req, res) => {
+], async (req, res) => {
   const errors = validationResult(req);
   if(!errors.isEmpty()){
     return res.status(422).json({
@@ -77,13 +72,13 @@ router.post('/register', [
     })
   }
 
-  const {name, email, password, phone, address} = req.body;
+  const {username, email, password, phone, address} = req.body;
   const createdAt = formatMySQLDate(new Date());
 
   const hashPass = await bcrypt.hash(password, 10);
 
   const data = {
-    name,
+    username,
     email,
     phone,
     address,
@@ -109,7 +104,7 @@ router.post('/register', [
     data
   })
 
-  if(!result){
+  if (!result) {
     return res.status(500).json({
       status: 'fail',
       message: 'internal error'
@@ -158,9 +153,8 @@ router.post('/login', async (req, res) => {
     } else {
       const payload = {
         id: resultUser.id,
-        name: resultUser.name,
-        email: resultUser.email,
-        // address: resultUser.address
+        username: resultUser.username,
+        email: resultUser.email
       }
   
       const secret = process.env.JWT_SECRET;

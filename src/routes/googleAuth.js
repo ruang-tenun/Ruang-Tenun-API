@@ -54,7 +54,7 @@ router.get('/callback', async (req, res) => {
     })
     const {data} = await oauth2.userinfo.get()
 
-    if(!data.email || !data.name){
+    if(!data.email || !data.username){
       return res.status(400).json({
         status: 'fail',
         message: 'Google account data is incomplete!'
@@ -71,7 +71,7 @@ router.get('/callback', async (req, res) => {
     if (!result) {
       const createdAt = formatMySQLDate(new Date());
       const row = {
-        name: data.name,
+        name: data.username,
         email: data.email,
         phone: "-",
         address: "-",
