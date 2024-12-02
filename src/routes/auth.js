@@ -1,10 +1,8 @@
 const router = require("express").Router();
-const connection = require("../../config/database");
 const bcrypt = require('bcrypt');
 const { nextFunction, Request, Response } = require('express');
 const { body, validationResult } = require("express-validator");
 const jwt = require('jsonwebtoken')
-const { jwtPayload } = require('jsonwebtoken');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const formatMySQLDate = require("../middlewares/formattedDateSql");
@@ -129,72 +127,78 @@ router.post('/register', [
 });
 
 router.post('/login', async (req, res) => {
-  const {email, password} = req.body;
-  const resultUser = await prisma.users.findFirst({
-    where: { email }
-  })
-  const resultSeller = await prisma.sellers.findFirst({where: {email}})
+  try {
+    const {email, password} = req.body;
+    const resultUser = await prisma.users.findFirst({
+      where: { email }
+    })
+    const resultSeller = await prisma.sellers.findFirst({where: {email}})
 
-  if(!resultUser && !resultSeller){
-    return res.status(404).json({
+    if(!resultUser && !resultSeller){
+      return res.status(404).json({
+        status: 'fail',
+        message: 'email is not found'
+      })
+    }
+
+    if(resultUser) {
+      const isPass = await bcrypt.compare(password, resultUser.password)
+    
+      if(!isPass){
+        return res.status(403).json({
+          status: 'fail',
+          message: 'email or password is wrong'
+        })
+      } else {
+        const payload = {
+          id: resultUser.user_id,
+          username: resultUser.username,
+          email: resultUser.email
+        }
+    
+        const secret = process.env.JWT_SECRET;
+        const expIn = 60*60*1;
+        const token = jwt.sign(payload, secret, {expiresIn: expIn});
+        
+        return res.status(200).json({
+          status: 'success',
+          message: 'user logged in successfully',
+          payload,
+          token
+        })
+      }
+    } else {
+      const isPass = await bcrypt.compare(password, resultSeller.password);
+      if(!isPass) {
+        return res.status(403).json({
+          message: 'fail',
+          message: 'email or password is wrong'
+        })
+      } else {
+        const payload = {
+          id: resultSeller.seller_id,
+          name: resultSeller.name,
+          email: resultSeller.email,
+        }
+
+        const secret = process.env.JWT_SECRET;
+        const expIn = 60 * 60 * 1;
+        const token = jwt.sign(payload, secret, {expiresIn: expIn})
+
+        return res.status(200).json({
+          status: 'success',
+          message: 'seller logged in successfully',
+          payload,
+          token
+        })
+      }
+    }
+  } catch (error) {
+    return res.status(500).json({
       status: 'fail',
-      message: 'email is not found'
+      error: error.message
     })
   }
-
-  if(resultUser) {
-    const isPass = await bcrypt.compare(password, resultUser.password)
-  
-    if(!isPass){
-      return res.status(403).json({
-        status: 'fail',
-        message: 'email or password is wrong'
-      })
-    } else {
-      const payload = {
-        id: resultUser.id,
-        username: resultUser.username,
-        email: resultUser.email
-      }
-  
-      const secret = process.env.JWT_SECRET;
-      const expIn = 60*60*1;
-      const token = jwt.sign(payload, secret, {expiresIn: expIn});
-      
-      return res.status(200).json({
-        status: 'success',
-        message: 'user logged in successfully',
-        payload,
-        token
-      })
-    }
-  } else {
-    const isPass = await bcrypt.compare(password, resultSeller.password);
-    if(!isPass) {
-      return res.status(403).json({
-        message: 'fail',
-        message: 'email or password is wrong'
-      })
-    } else {
-      const payload = {
-        id: resultSeller.id,
-        name: resultSeller.name,
-        email: resultSeller.email,
-      }
-
-      const secret = process.env.JWT_SECRET;
-      const expIn = 60 * 60 * 1;
-      const token = jwt.sign(payload, secret, {expiresIn: expIn})
-
-      return res.status(200).json({
-        status: 'success',
-        message: 'seller logged in successfully',
-        payload,
-        token
-      })
-    }
-  }
-
 
   // connection.query("SELECT * FROM users WHERE email = ?", [email], async (err, field) => {
   //   const isPass = await bcrypt.compare(password, field[0].password);

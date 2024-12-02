@@ -1,2 +1,4 @@
 node_modules
 .env
+./src/routes/posts.js
+./config/database.js
