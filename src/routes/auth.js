@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken')
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const formatMySQLDate = require("../middlewares/formattedDateSql");
+const serverError = require("../middlewares/serverError");
 
 router.post('/register/seller', [
   body('name').notEmpty().withMessage('name is required'),
@@ -59,9 +60,7 @@ router.post('/register/seller', [
 router.post('/register', [
   body('username').notEmpty().withMessage('username is required'),
   body('email').notEmpty().withMessage('email is required'),
-  body('password').notEmpty().withMessage('password is required'),
-  body('phone').notEmpty().withMessage('telp is required'),
-  body('address').notEmpty().withMessage('address is required')
+  body('password').notEmpty().withMessage('password is required')
 ], async (req, res) => {
   const errors = validationResult(req);
   if(!errors.isEmpty()){
@@ -78,8 +77,8 @@ router.post('/register', [
   const data = {
     username,
     email,
-    phone,
-    address,
+    phone: "08XXXX",
+    address: "XXXX",
     password: hashPass,
     created_at: new Date(createdAt),
     updated_at: new Date(createdAt)
@@ -203,6 +202,20 @@ router.post('/login', async (req, res) => {
   // connection.query("SELECT * FROM users WHERE email = ?", [email], async (err, field) => {
   //   const isPass = await bcrypt.compare(password, field[0].password);
   // })
+});
+
+router.get("/logout", (req, res) => {
+  try {
+    if(req.headers.authorization){
+      const token = req.headers.authorization.split(' ')[1]
+
+      return res.json({ status: 'success', message: 'Logout sucessfully' }).status(200);
+    } else {
+      return res.json({ status: 'fail', message: 'Token required' }).status(422);
+    }
+  } catch (error) {
+    return res.status(500).json(serverError("Internal server error", error))
+  }
 });
 
 module.exports = router

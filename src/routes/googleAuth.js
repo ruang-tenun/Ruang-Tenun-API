@@ -72,8 +72,9 @@ router.get('/callback', async (req, res) => {
       const row = {
         username: data.name,
         email: data.email,
-        phone: "-",
-        address: "-",
+        password: "RTAB-PASS",
+        phone: "08XXXX",
+        address: "XXXX",
         created_at: new Date(createdAt),
         updated_at: new Date(createdAt)
       }
