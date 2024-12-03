@@ -11,8 +11,6 @@ const serverError = require("../middlewares/serverError");
 router.post('/register/seller', [
   body('name').notEmpty().withMessage('name is required'),
   body('email').notEmpty().withMessage('email is required'),
-  body('phone').notEmpty().withMessage('phone is required'),
-  body('address').notEmpty().withMessage('address is required'),
 ], async(req, res) => {
     const errors = validationResult(req);
     if(!errors.isEmpty()){
@@ -22,15 +20,15 @@ router.post('/register/seller', [
       })
     }
 
-    const {name, email, phone, address, password} = req.body;
+    const {name, email, password} = req.body;
     const hashPass = await bcrypt.hash(password, 10);
     const createdAt = formatMySQLDate(new Date());
     const data = {
       name,
       email,
       password: hashPass,
-      phone,
-      address,
+      phone: "08XXXX",
+      address: "XXXX",
       created_at: new Date(createdAt),
       updated_at: new Date(createdAt),
     }
@@ -69,7 +67,7 @@ router.post('/register', [
     })
   }
 
-  const {username, email, password, phone, address} = req.body;
+  const {username, email, password} = req.body;
   const createdAt = formatMySQLDate(new Date());
 
   const hashPass = await bcrypt.hash(password, 10);
@@ -128,10 +126,10 @@ router.post('/register', [
 router.post('/login', async (req, res) => {
   try {
     const {email, password} = req.body;
-    const resultUser = await prisma.users.findFirst({
+    const resultUser = await prisma.users.findUnique({
       where: { email }
     })
-    const resultSeller = await prisma.sellers.findFirst({where: {email}})
+    const resultSeller = await prisma.sellers.findUnique({where: {email}})
 
     if(!resultUser && !resultSeller){
       return res.status(404).json({
@@ -158,13 +156,49 @@ router.post('/login', async (req, res) => {
         const secret = process.env.JWT_SECRET;
         const expIn = 60*60*1;
         const token = jwt.sign(payload, secret, {expiresIn: expIn});
-        
-        return res.status(200).json({
-          status: 'success',
-          message: 'user logged in successfully',
-          payload,
-          token
-        })
+        const refresh_token_id = await prisma.tokens.findFirst({
+          where: {
+            AND: [
+              {auth_id: resultUser.user_id},
+              { role: "user_id"}
+            ]
+          }
+        });
+
+        if(refresh_token_id){
+          const refresh_token = await prisma.tokens.update({
+            data: {
+              refresh_token: token,
+              verified_token: "true"
+            },
+            where: {
+              token_id: refresh_token_id.token_id 
+            }
+          })
+          return res.status(200).json({
+            status: 'success',
+            message: 'user logged in successfully',
+            payload,
+            token
+          })
+        } else {
+          const createdAt = formatMySQLDate(new Date());
+          const refresh_token = await prisma.tokens.create({
+            data: {
+              refresh_token: token,
+              auth_id: Number(resultUser.user_id),
+              role: 'user_id',
+              verified_token: "true",
+              created_at: new Date(createdAt)
+            }
+          })
+          return res.status(200).json({
+            status: 'success',
+            message: 'user logged in successfully',
+            payload,
+            token
+          })
+        }
       }
     } else {
       const isPass = await bcrypt.compare(password, resultSeller.password);
@@ -183,6 +217,42 @@ router.post('/login', async (req, res) => {
         const secret = process.env.JWT_SECRET;
         const expIn = 60 * 60 * 1;
         const token = jwt.sign(payload, secret, {expiresIn: expIn})
+        const refresh_token_id = await prisma.tokens.findFirst({
+          where: {
+            AND: [
+              {auth_id: resultSeller.seller_id},
+              {role: 'seller_id'}
+            ]
+          }
+        })
+
+        if(refresh_token_id){
+          const refresh_token = await prisma.tokens.update({
+            data: {
+              refresh_token: token,
+              verified_token: "true"
+            },
+            where: {
+              token_id: refresh_token_id.token_id 
+            }
+          })
+          return res.status(200).json({
+            status: 'success',
+            message: 'seller logged in successfully',
+            payload,
+            token
+          })
+        }
+        const createdAt = formatMySQLDate(new Date());
+        await prisma.tokens.create({
+          data: {
+            refresh_token: token,
+            auth_id: Number(resultSeller.seller_id),
+            role: 'seller_id',
+            verified_token: "true",
+            created_at: new Date(createdAt)
+          }
+        })
 
         return res.status(200).json({
           status: 'success',
@@ -204,12 +274,26 @@ router.post('/login', async (req, res) => {
   // })
 });
 
-router.get("/logout", (req, res) => {
+router.get("/logout", async (req, res) => {
   try {
-    if(req.headers.authorization){
-      const token = req.headers.authorization.split(' ')[1]
+    const secret = process.env.JWT_SECRET;
+    const { authorization } = req.headers;
+    const token = authorization.split(' ')[1];
+    const refresh_token = await prisma.tokens.findFirst({where: {refresh_token: token}});
+    const verified_token = refresh_token.verified_token
 
-      return res.json({ status: 'success', message: 'Logout sucessfully' }).status(200);
+    if(verified_token == "true"){
+      const jwtDecode = jwt.verify(token,secret);
+      if(typeof jwtDecode == 'object' && jwtDecode.id && jwtDecode.email){
+        req.userData = {
+          id: null,
+          email: null,
+        }
+        await prisma.tokens.update({where: {token_id: refresh_token.token_id}, data: {verified_token: "false"}});
+        return res.json({ status: 'success', message: 'Logout sucessfully' }).status(200);
+      } else {
+        return res.json({ status: 'fail', message: 'Token is invalid' }).status(422);
+      }
     } else {
       return res.json({ status: 'fail', message: 'Token required' }).status(422);
     }
