@@ -11,7 +11,6 @@ const accessValidation = (req, res, next) => {
   }
 
   const token = authorization.split(' ')[1];
-  console.log(token + "\n");
   
   if(!token){
     return res.status(401).json({
@@ -31,11 +30,10 @@ const accessValidation = (req, res, next) => {
 
   try {
     const jwtDecode = jwt.verify(token, secret);
-    console.log(jwtDecode);
 
-    if(typeof jwtDecode == 'object' && jwtDecode.username && jwtDecode.email){
+    if(typeof jwtDecode == 'object' && jwtDecode.id && jwtDecode.email){
       req.userData = {
-        username: jwtDecode.username,
+        id: jwtDecode.id,
         email: jwtDecode.email
       }
     } else {

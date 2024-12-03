@@ -1,6 +1,5 @@
 const router = require('express').Router();
 const { google } = require('googleapis');
-const connection = require('../../config/database');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 require('dotenv').config();
@@ -54,7 +53,7 @@ router.get('/callback', async (req, res) => {
     })
     const {data} = await oauth2.userinfo.get()
 
-    if(!data.email || !data.username){
+    if(!data.email || !data.name){
       return res.status(400).json({
         status: 'fail',
         message: 'Google account data is incomplete!'
@@ -71,7 +70,7 @@ router.get('/callback', async (req, res) => {
     if (!result) {
       const createdAt = formatMySQLDate(new Date());
       const row = {
-        name: data.username,
+        username: data.name,
         email: data.email,
         phone: "-",
         address: "-",

@@ -2,18 +2,33 @@ require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const morgan = require("morgan");
 
 // initialize app
 const app = express()
 const port = 3000
 
-app.use(cors())
 app.use(express.json());
 // parse application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({extended: false}))
 // parse application/json
 app.use(bodyParser.json())
 app.use(cors({origin: '*'}))
+app.use(morgan("dev"));
+
+// Middleware untuk menangani kesalahan (onPreResponse
+app.use((req, res, next) => {
+  const contentLength = parseInt(req.headers["content-length"] || "0", 10);
+  const maxSize = 1000000; // 1MB
+
+  if(contentLength > maxSize) {
+    return res.status(413).json({
+      status: "fail",
+      message: `Payload content length greater than maximum allowed: ${maxSize}`
+    });
+  }
+  next();
+})
 
 // initialize oauth google
 // google login route
@@ -36,6 +51,14 @@ app.use('/api/categories', categoryRoute);
 const productRoute = require('./src/routes/products');
 app.use('/api/products', productRoute);
 
+// import route ecommerce link
+const linkRoute = require("./src/routes/links");
+app.use("/api/links", linkRoute)
+
+// import route favorite
+const favoriteRoute = require("./src/routes/favorites");
+app.use("/api/favorites", favoriteRoute)
+
 // route
 app.get("/", (req, resp) => {
   resp.status(200).json({
@@ -43,6 +66,21 @@ app.get("/", (req, resp) => {
     message: 'Hello Ruang Tenun'
   })
 })
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  if (err instanceof InputError) {
+    return res.status(err.statusCode || 400).json({
+      status: "fail",
+      message: "Terjadi kesalahan dalam server",
+    });
+  }
+
+  res.status(err.statusCode || 500).json({
+    status: "fail",
+    message: err.message || "Internal Server Error",
+  });
+});
 
 // start server
 app.listen(port, () => {

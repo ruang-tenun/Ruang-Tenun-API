@@ -1,10 +1,10 @@
 const router = require('express').Router();
-const jwt = require("jsonwebtoken");
 const {PrismaClient} = require('@prisma/client');
 const prisma = new PrismaClient();
 const accessMiddleware = require("../middlewares/accessValidation");
 const {body, validationResult} = require("express-validator");
 const formatMySQLDate = require('../middlewares/formattedDateSql');
+const productController = require('../controllers/productController');
 
 router.post('/', [
   body('name').notEmpty().withMessage('name is required'),
@@ -13,47 +13,20 @@ router.post('/', [
   body('category_id').notEmpty().withMessage('category_id is required'),
   body('seller_id').notEmpty().withMessage('seller_id is required'),
   body('image_url').notEmpty().withMessage('image_url is required'),
-], accessMiddleware, async (req, res) => {
-  const {name, description, price, category_id, seller_id, image_url} = req.body;
-  const createdAt = formatMySQLDate(new Date);
-  const errors = validationResult(req);
+], accessMiddleware, productController.postProductHandler);
 
-  if(!errors.isEmpty()){
-    return res.status(422).json({
-      status: 'fail',
-      error: errors.array()
-    });
-  }
+router.get("/", accessMiddleware, productController.getAllProductsHandler);
 
-  const payloads = {
-    name,
-    description,
-    price,
-    category_id,
-    seller_id,
-    image_url,
-    created_at: createdAt,
-    updated_at: createdAt
-  }
+router.get("/(:product_id)", accessMiddleware, productController.getProductByIdHandler);
 
-  const result = await prisma.products.create({
-    data: {
-      payloads
-    }
-  })
+router.put("/(:product_id)", [
+  body('name').notEmpty().withMessage('name is required'),
+  body('description').notEmpty().withMessage('description is required'),
+  body('price').notEmpty().withMessage('price is required'),
+  body('category_id').notEmpty().withMessage('category_id is required'),
+  body('image_url').notEmpty().withMessage('image_url is required'),
+], accessMiddleware, productController.updateProductByIdHandler)
 
-  if(!result){
-    return res.status(500).json({
-      status: 'fail',
-      message: 'Internal Error error'
-    });
-  }
-
-  return res.status(201).json({
-    status: 'fail',
-    message: 'created data product successfully',
-    payload: payloads
-  })
-})
+router.delete("/(:product_id)", accessMiddleware, productController.deleteProductByIdHandler)
 
 module.exports = router
