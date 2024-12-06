@@ -4,7 +4,7 @@ const {validationResult} = require('express-validator');
 
 const postCategory = async (req, res) => {
   try {  
-    const {name, description} = req.body;
+    const {name, description, address} = req.body;
     const errors = validationResult(req);
     
     if(!errors.isEmpty) {
@@ -14,14 +14,14 @@ const postCategory = async (req, res) => {
       })
     }
 
-    const payloads = {name, description};
+    const payloads = {name, description, address};
     
     await prisma.categories.create({
       data: payloads
     })
 
     return res.status(201).json({
-      status: 'fail',
+      status: 'success',
       message: 'Created data category successfully',
       payload: payloads
     });
@@ -39,7 +39,7 @@ const getAllCategory = async (req, res) => {
     const result = await prisma.categories.findMany();
   
     return res.status(200).json({
-      status: 'fail',
+      status: 'success',
       message: 'get all data categories successfully',
       payload: result
     })
@@ -69,7 +69,7 @@ const getCategoryById = async (req, res) => {
     }
  
     return res.status(200).json({
-     status: 'fail',
+     status: 'success',
      message: 'get detail category successfully',
      payload: result
     })
@@ -85,7 +85,7 @@ const getCategoryById = async (req, res) => {
 const updateCategoryById = async (req, res) => {
   try {
     const {id} = req.params;
-    const {name, description} = req.body;
+    const {name, description, address} = req.body;
     const errors = validationResult(req);
     if(!errors.isEmpty()){
       return res.status(422).json({
@@ -104,7 +104,7 @@ const updateCategoryById = async (req, res) => {
     }
   
     const payload = {
-      name, description
+      name, description, address
     }
   
     const result = await prisma.categories.update({

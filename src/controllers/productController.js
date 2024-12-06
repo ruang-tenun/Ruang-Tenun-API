@@ -4,7 +4,7 @@ const {validationResult} = require('express-validator');
 const formatMySQLDate = require("../middlewares/formattedDateSql");
 
 const postProductHandler = async (req, res) => {
-  const {name, description, price, category_id, seller_id, image_url} = req.body;
+  const {name, category_id, seller_id, image_url, address} = req.body;
   const createdAt = formatMySQLDate(new Date);
   const errors = validationResult(req);
 
@@ -17,8 +17,7 @@ const postProductHandler = async (req, res) => {
 
   const payloads = {
     name,
-    description,
-    price,
+    address,
     category_id,
     seller_id,
     image_url,
@@ -99,7 +98,7 @@ const updateProductByIdHandler = async (req, res) => {
   }
 
   const {product_id} = req.params
-  const {name, description, price, category_id, image_url} = req.body;
+  const {name, category_id, image_url, address} = req.body;
   const updatedAt = formatMySQLDate(new Date());
   const checkId = await prisma.products.findFirst({where: {product_id: Number(product_id)}});
 
@@ -111,7 +110,7 @@ const updateProductByIdHandler = async (req, res) => {
   }
 
   const payload = {
-    name, description, price, category_id, image_url, updated_at: new Date(updatedAt)
+    name, category_id, image_url, address, updated_at: new Date(updatedAt)
   }
   const result = await prisma.products.update({
     data: payload,
