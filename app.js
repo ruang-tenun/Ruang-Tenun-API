@@ -3,10 +3,12 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const morgan = require("morgan");
+const multer = require('multer');
 
 // initialize app
-const app = express()
-const port = 3000
+const app = express();
+const port = 3000;
+const fileData = multer();
 
 app.use(express.json());
 // parse application/x-www-form-urlencoded
@@ -15,6 +17,7 @@ app.use(bodyParser.urlencoded({extended: false}))
 app.use(bodyParser.json())
 app.use(cors({origin: '*'}))
 app.use(morgan("dev"));
+app.use(fileData.array())
 
 // Middleware untuk menangani kesalahan (onPreResponse
 app.use((req, res, next) => {

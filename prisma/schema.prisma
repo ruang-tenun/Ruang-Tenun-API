@@ -11,6 +11,7 @@ model categories {
   category_id Int        @id @default(autoincrement())
   name        String     @db.VarChar(255)
   description String?    @db.Text
+  address     String?    @db.VarChar(100)
   products    products[]
 }
 
@@ -18,7 +19,7 @@ model ecommercelinks {
   link_id        Int       @id @default(autoincrement())
   product_id     Int?
   ecommerce_name String    @db.VarChar(255)
-  link_url       String    @db.VarChar(255)
+  link_url       String?   @db.Text
   products       products? @relation(fields: [product_id], references: [product_id], onDelete: Cascade, map: "ecommercelinks_ibfk_1")
 
   @@index([product_id], map: "ecommercelinks_ibfk_1")
@@ -39,11 +40,10 @@ model favorites {
 model products {
   product_id     Int              @id @default(autoincrement())
   name           String           @db.VarChar(255)
-  description    String?          @db.Text
-  price          Decimal          @db.Decimal(10, 2)
+  address        String?          @db.Text
   category_id    Int?
   seller_id      Int?
-  image_url      String?          @db.VarChar(255)
+  image_url      String?          @db.Text
   created_at     DateTime?        @default(now()) @db.Timestamp(0)
   updated_at     DateTime?        @default(now()) @db.Timestamp(0)
   ecommercelinks ecommercelinks[]
@@ -77,4 +77,18 @@ model users {
   created_at DateTime?   @default(now()) @db.Timestamp(0)
   updated_at DateTime?   @default(now()) @db.Timestamp(0)
   favorites  favorites[]
+}
+
+model tokens {
+  token_id       Int         @id @default(autoincrement())
+  refresh_token  String      @db.Text
+  auth_id        Int
+  role           tokens_role
+  verified_token String      @db.VarChar(10)
+  created_at     DateTime    @db.DateTime(0)
+}
+
+enum tokens_role {
+  user_id
+  seller_id
 }

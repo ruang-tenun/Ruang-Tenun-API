@@ -1,6 +1,8 @@
 const jwt = require('jsonwebtoken');
+const {PrismaClient} = require('@prisma/client');
+const prisma = new PrismaClient();
 
-const accessValidation = (req, res, next) => {
+const accessValidation = async (req, res, next) => {
   const { authorization } = req.headers;
 
   if(!authorization){
@@ -29,12 +31,21 @@ const accessValidation = (req, res, next) => {
   }
 
   try {
+    const refresh_token = await prisma.tokens.findFirst({where: {refresh_token: token}})
     const jwtDecode = jwt.verify(token, secret);
+    const verified_token = refresh_token.verified_token;
 
-    if(typeof jwtDecode == 'object' && jwtDecode.id && jwtDecode.email){
-      req.userData = {
-        id: jwtDecode.id,
-        email: jwtDecode.email
+    if(verified_token == "true"){
+      if(typeof jwtDecode == 'object' && jwtDecode.id && jwtDecode.email){
+        req.userData = {
+          id: jwtDecode.id,
+          email: jwtDecode.email
+        }
+      } else {
+        return res.status(401).json({
+          status: 'fail',
+          message: 'token is invalid'
+        })
       }
     } else {
       return res.status(401).json({
