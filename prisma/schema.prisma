@@ -41,6 +41,8 @@ model products {
   product_id     Int              @id @default(autoincrement())
   name           String           @db.VarChar(255)
   address        String?          @db.Text
+  latitude       Float?
+  longitude      Float?
   category_id    Int?
   seller_id      Int?
   image_url      String?          @db.Text

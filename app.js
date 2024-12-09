@@ -4,20 +4,43 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const morgan = require("morgan");
 const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
+const InputError = require('./src/middlewares/errors/InputError')
 
 // initialize app
 const app = express();
 const port = 3000;
 const fileData = multer();
+const imagesDir = path.join(__dirname, 'images');
+if (!fs.existsSync(imagesDir)) {
+  fs.mkdirSync(imagesDir);
+}
+const fileStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'images')
+  },
+  filename: (req, file, cb) => {
+    cb(null, new Date().getTime() + '-' + file.originalname)
+  }
+})
+const fileFilter = (req, file, cb) => {
+  if (file.mimetype === 'image/png' || file.mimetype === 'image/jpg' || file.mimetype === 'image/jpeg') {
+    cb(null, true);
+  } else {
+    cb(null, false); 
+  }
+}
 
 app.use(express.json());
 // parse application/x-www-form-urlencoded
-app.use(bodyParser.urlencoded({extended: false}))
+// app.use(bodyParser.urlencoded({extended: false}))
 // parse application/json
+app.use(multer({storage: fileStorage, fileFilter: fileFilter}).single('image'));
 app.use(bodyParser.json())
 app.use(cors({origin: '*'}))
 app.use(morgan("dev"));
-app.use(fileData.array())
+// app.use(fileData.array())
 
 // Middleware untuk menangani kesalahan (onPreResponse
 app.use((req, res, next) => {
