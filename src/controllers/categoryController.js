@@ -130,14 +130,19 @@ const deleteCategoryById = async (req, res) => {
   try {
     const {id} = req.params;
     const checkId = await prisma.categories.findUnique({where: {category_id: Number(id)}});
+    const checkProduct = await prisma.products.findMany({where: {category_id: Number(id)}});
     if (!checkId) {
       return res.status(404).json({
         status: 'fail',
         message: 'data category not found'
       })
     }
+    
+    if (checkProduct) {
+      await prisma.products.update({data: {category_id: null}, where: {category_id: Number(id)}})
+    }
   
-    const result = await prisma.categories.delete({where: {category_id: Number(id)}});
+    await prisma.categories.delete({where: {category_id: Number(id)}});
   
     return res.status(200).json({
       status: 'success',
