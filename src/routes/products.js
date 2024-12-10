@@ -12,14 +12,16 @@ router.post('/', [
 
 router.get("/", accessMiddleware, productController.getAllProductsHandler);
 
-router.get("/(:product_id)", accessMiddleware, productController.getProductByIdHandler);
+// router.get("/", accessMiddleware, productController.getProductByCategoryIdHandler);
 
-router.put("/(:product_id)", [
+router.get("/:product_id", accessMiddleware, productController.getProductByIdHandler);
+
+router.put("/:product_id", [
   body('name').notEmpty().withMessage('name is required'),
   body('category_id').notEmpty().withMessage('category_id is required'),
   body('image_url').notEmpty().withMessage('image_url is required'),
 ], accessMiddleware, productController.updateProductByIdHandler)
 
-router.delete("/(:product_id)", accessMiddleware, productController.deleteProductByIdHandler)
+router.delete("/:product_id", accessMiddleware, productController.deleteProductByIdHandler)
 
 module.exports = router

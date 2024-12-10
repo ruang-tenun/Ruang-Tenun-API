@@ -13,6 +13,45 @@ const gcs = new Storage({
 });
 const bucket = gcs.bucket(bucketName);
 
+const getProductByCategoryIdHandler = async (req, res) => {
+  
+
+  const payload = result.map((rs) => ({
+    product_id: rs.product_id,
+    name: rs.name,
+    address: rs.address,
+    ecommerce_url: rs.ecommercelinks[0]?.link_url ?? "null",
+    ecommerce: rs.ecommercelinks[0]?.ecommerce_name ?? "null",
+    latitude: rs.latitude,
+    longitude: rs.longitude,
+    category: rs.categories.name,
+    seller: rs.sellers.name,
+    image_url: rs.image_url,
+    created_at: rs.created_at,
+    updated_at: rs.updated_at
+  }))
+  
+  if(!result){
+    return res.status(500).json({
+      status: 'fail',
+      message: 'internal server error'
+    })
+  }
+
+  if(result.length < 1) {
+    return res.status(404).json({
+      status: 'fail',
+      message: 'id product not found'
+    })
+  }
+
+  return res.status(200).json({
+    status: 'success',
+    message: 'get data category by id successfully',
+    payload: payload
+  })
+}
+
 const postProductHandler = async (req, res) => {
   const errors = validationResult(req);
 
@@ -89,7 +128,38 @@ const postProductHandler = async (req, res) => {
 }
 
 const getAllProductsHandler = async (req, res) => {
-  const result = await prisma.products.findMany();
+  const {category} = req.query;
+  console.log(category);
+  
+  let result;
+  if(category == undefined){
+    result = await prisma.products.findMany({include: {categories: true, sellers: true, ecommercelinks: true}});
+  } else {
+    result = await prisma.products.findMany({
+      where: {category_id: Number(category)},
+      include: {
+        categories: true,
+        sellers: true,
+        ecommercelinks: true
+      }
+    });
+  }
+
+  const payload = result.map((rs) => ({
+    product_id: rs.product_id,
+    name: rs.name,
+    address: rs.address,
+    ecommerce_url: rs.ecommercelinks[0]?.link_url,
+    ecommerce: rs.ecommercelinks[0]?.ecommerce_name,
+    latitude: rs.latitude,
+    longitude: rs.longitude,
+    category: rs.categories.name,
+    seller: rs.sellers.name,
+    image_url: rs.image_url,
+    created_at: rs.created_at,
+    updated_at: rs.updated_at
+  }))
+  
   if(!result){
     return res.status(500).json({
       status: 'fail',
@@ -99,16 +169,36 @@ const getAllProductsHandler = async (req, res) => {
 
   return res.status(200).json({
     status: 'success',
-    message: 'get all data category successfully',
-    payload: result
+    message: category ? 'get all data product by id category successfully' : 'get all data product successfully',
+    payload: payload
   })
 }
 
 const getProductByIdHandler = async (req, res) => {
   const {product_id} = req.params
   const result = await prisma.products.findMany({
-    where: {product_id: Number(product_id)}
+    where: {product_id: Number(product_id)},
+    include: {
+      categories: true,
+      sellers: true,
+      ecommercelinks: true
+    }
   });
+  const payload = result.map((rs) => ({
+    product_id: rs.product_id,
+    name: rs.name,
+    address: rs.address,
+    ecommerce_url: rs.ecommercelinks[0]?.link_url ?? "null",
+    ecommerce: rs.ecommercelinks[0]?.ecommerce_name ?? "null",
+    latitude: rs.latitude,
+    longitude: rs.longitude,
+    category: rs.categories.name,
+    seller: rs.sellers.name,
+    image_url: rs.image_url,
+    created_at: rs.created_at,
+    updated_at: rs.updated_at
+  }))
+  
   if(!result){
     return res.status(500).json({
       status: 'fail',
@@ -126,7 +216,7 @@ const getProductByIdHandler = async (req, res) => {
   return res.status(200).json({
     status: 'success',
     message: 'get data category by id successfully',
-    payload: result
+    payload: payload
   })
 }
 
@@ -205,4 +295,4 @@ const deleteProductByIdHandler = async (req, res) => {
   })
 }
 
-module.exports = {postProductHandler, getAllProductsHandler, getProductByIdHandler, updateProductByIdHandler, deleteProductByIdHandler}
+module.exports = {postProductHandler, getAllProductsHandler, getProductByCategoryIdHandler, getProductByIdHandler, updateProductByIdHandler, deleteProductByIdHandler}
