@@ -7,12 +7,21 @@ const formatMySQLDate = require("../middlewares/formattedDateSql");
 
 const getAllFavoriteHandler = async (req, res) => {
   try {
-    const result = await prisma.favorites.findMany();
+    const result = await prisma.favorites.findMany({include: {users: true, products: true}});
+
+    const payload = result.map((rs) => ({
+      favorite_id: rs.favorite_id,
+      user_id: rs.user_id,
+      user_name: rs.users.username,
+      product_id: rs.product_id,
+      product_name: rs.products.name,
+      favorited_at: rs.favorited_at
+    }));
 
     return res.status(200).json({
       status: 'success',
       message: 'get all data favorites',
-      payload: result
+      payload: payload
     })
   } catch (error) {
     return res.status(500).json(serverError("Internal server error", error));
@@ -27,11 +36,20 @@ const getFavoriteByIdHandler = async (req, res) => {
       return res.status(404).json(notFoundError("id data favorite is not found"))
     }
 
-    const result = await prisma.favorites.findMany({where: {favorite_id: Number(favorite_id)}});
+    const result = await prisma.favorites.findMany({where: {favorite_id: Number(favorite_id)}, include: {users: true, products: true}});
+    const payload = result.map((rs) => ({
+      favorite_id: rs.favorite_id,
+      user_id: rs.user_id,
+      user_name: rs.users.username,
+      product_id: rs.product_id,
+      product_name: rs.products.name,
+      favorited_at: rs.favorited_at
+    }));
+
     return res.status(200).json({
       status: 'success',
       message: 'get data favorites by id is successfully',
-      payload: result
+      payload: payload
     })
   } catch (error) {
     return res.status(500).json(serverError("Internal server error", error));
