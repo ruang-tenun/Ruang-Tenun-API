@@ -12,35 +12,29 @@ const InputError = require('./src/middlewares/errors/InputError')
 const app = express();
 const port = 3000;
 const fileData = multer();
-const imagesDir = path.join(__dirname, 'images');
-if (!fs.existsSync(imagesDir)) {
-  fs.mkdirSync(imagesDir);
-}
-const fileStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'images')
+// Konfigurasi Multer untuk multipart/form-data
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage,
+  limits: { fileSize: 2 * 1024 * 1024 }, // Maksimal 2MB
+  fileFilter: (req, file, cb) => {
+    const allowedMimeTypes = ['image/png', 'image/jpg', 'image/jpeg'];
+    if (allowedMimeTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PNG, JPG, and JPEG formats are allowed!'), false);
+    }
   },
-  filename: (req, file, cb) => {
-    cb(null, new Date().getTime() + '-' + file.originalname)
-  }
-})
-const fileFilter = (req, file, cb) => {
-  if (file.mimetype === 'image/png' || file.mimetype === 'image/jpg' || file.mimetype === 'image/jpeg') {
-    cb(null, true);
-  } else {
-    cb(null, false); 
-  }
-}
+});
 
 app.use(express.json());
 // parse application/x-www-form-urlencoded
-// app.use(bodyParser.urlencoded({extended: false}))
+app.use(bodyParser.urlencoded({extended: true}))
 // parse application/json
-app.use(multer({storage: fileStorage, fileFilter: fileFilter}).single('image'));
+// app.use(multer({storage: fileStorage, fileFilter: fileFilter}).single('image'));
 app.use(bodyParser.json())
 app.use(cors({origin: '*'}))
 app.use(morgan("dev"));
-// app.use(fileData.array())
 
 // Middleware untuk menangani kesalahan (onPreResponse
 app.use((req, res, next) => {
@@ -75,7 +69,7 @@ app.use('/api/categories', categoryRoute);
 
 // import route product
 const productRoute = require('./src/routes/products');
-app.use('/api/products', productRoute);
+app.use('/api/products', upload.single('image_url'), productRoute);
 
 // import route ecommerce link
 const linkRoute = require("./src/routes/links");

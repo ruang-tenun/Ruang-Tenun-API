@@ -1,62 +1,91 @@
 const {PrismaClient} = require("@prisma/client");
+const {Storage} = require('@google-cloud/storage');
 const prisma = new PrismaClient();
 const {validationResult} = require('express-validator');
 const formatMySQLDate = require("../middlewares/formattedDateSql");
+const path = require('path');
+
+const pathKey = path.resolve(__dirname, "../../serviceaccount.json");
+const bucketName = "rtab_bucket_image";
+const gcs = new Storage({
+  projectId: process.env.PROJECT_ID,
+  keyFilename: pathKey,
+});
+const bucket = gcs.bucket(bucketName);
 
 const postProductHandler = async (req, res) => {
   const errors = validationResult(req);
-  
-  if(!errors.isEmpty()){
+
+  if (!errors.isEmpty()) {
     return res.status(422).json({
       status: 'fail',
-      error: errors.array()
-    });
-  }
-  
-  if(!req.file){
-    return res.status(422).json({
-      status: 'fail',
-      error: 'image must be uploaded'
+      error: errors.array(),
     });
   }
 
-  console.log(req.file);
-  
-  
-  const {name, category_id, seller_id, image_url, address, longitude, latitude} = req.body;
-  const createdAt = formatMySQLDate(new Date);
-
-  const payloads = {
-    name,
-    address,
-    latitude,
-    longitude,
-    category_id,
-    seller_id,
-    image_url,
-    created_at: new Date(createdAt),
-    updated_at: new Date(createdAt)
+  if (!req.file) {
+    return res.status(422).json({
+      status: 'fail',
+      error: 'image must be uploaded',
+    });
   }
 
-  console.log(payloads);
-  
+  const imageName = new Date().toISOString() + "-" + req.file.originalname.replace(/ /g, "_");
+  const file = bucket.file(imageName);
 
-  const result = await prisma.products.create({
-    data: payloads
-  })
+  const stream = file.createWriteStream({
+    metadata: {
+      contentType: req.file.mimetype,
+    },
+  });
 
-  if(!result){
+  stream.on("error", (err) => {
     return res.status(500).json({
-      status: 'fail',
-      message: 'Internal Error'
+      status: "fail",
+      message: "Failed to upload image to GCS",
+      error: err.message,
     });
-  }
+  });
 
-  return res.status(201).json({
-    status: 'fail',
-    message: 'created data product successfully',
-    payload: payloads
-  })
+  stream.on("finish", async () => {
+    // URL akses publik file di GCS
+    const publicUrl = `https://storage.googleapis.com/${bucketName}/${imageName}`;
+
+    const { name, category_id, seller_id, address, longitude, latitude } = req.body;
+    const createdAt = formatMySQLDate(new Date());
+
+    const payloads = {
+      name,
+      address,
+      latitude: parseFloat(latitude),
+      longitude: parseFloat(longitude),
+      category_id: parseInt(category_id),
+      seller_id: parseInt(seller_id),
+      image_url: publicUrl,
+      created_at: new Date(createdAt),
+      updated_at: new Date(createdAt),
+    };
+
+    try {
+      const result = await prisma.products.create({
+        data: payloads,
+      });
+
+      return res.status(201).json({
+        status: "success",
+        message: "Created data product successfully",
+        payload: result,
+      });
+    } catch (error) {
+      return res.status(500).json({
+        status: "fail",
+        message: "Internal Server Error",
+        error: error.message,
+      });
+    }
+  });
+
+  stream.end(req.file.buffer);
 }
 
 const getAllProductsHandler = async (req, res) => {

@@ -1,16 +1,13 @@
 const router = require('express').Router();
-const {PrismaClient} = require('@prisma/client');
-const prisma = new PrismaClient();
 const accessMiddleware = require("../middlewares/accessValidation");
 const {body, validationResult} = require("express-validator");
-const formatMySQLDate = require('../middlewares/formattedDateSql');
 const productController = require('../controllers/productController');
 
 router.post('/', [
   body('name').notEmpty().withMessage('name is required'),
   body('category_id').notEmpty().withMessage('category_id is required'),
   body('seller_id').notEmpty().withMessage('seller_id is required'),
-  body('image_url').notEmpty().withMessage('image_url is required'),
+  // body('image_url').notEmpty().withMessage('image_url is required'),
 ], accessMiddleware, productController.postProductHandler);
 
 router.get("/", accessMiddleware, productController.getAllProductsHandler);
