@@ -10,7 +10,7 @@ const InputError = require('./src/middlewares/errors/InputError')
 
 // initialize app
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 const fileData = multer();
 // Konfigurasi Multer untuk multipart/form-data
 const storage = multer.memoryStorage();
