@@ -79,6 +79,10 @@ app.use("/api/links", linkRoute)
 const favoriteRoute = require("./src/routes/favorites");
 app.use("/api/favorites", favoriteRoute)
 
+// import route profile
+const profileRoute = require("./src/routes/profile");
+app.use("/api/profile", profileRoute)
+
 // route
 app.get("/", (req, resp) => {
   resp.status(200).json({

@@ -69,7 +69,7 @@ const postProductHandler = async (req, res) => {
     });
   }
 
-  const imageName = new Date().toISOString() + "-" + req.file.originalname.replace(/ /g, "_");
+  const imageName = `product_images/${new Date().toISOString()} -${req.file.originalname.replace(/ /g, "_")}`;
   const file = bucket.file(imageName);
 
   const stream = file.createWriteStream({
@@ -128,21 +128,40 @@ const postProductHandler = async (req, res) => {
 }
 
 const getAllProductsHandler = async (req, res) => {
-  const {category} = req.query;
-  console.log(category);
+  const {category, seller} = req.query;
   
   let result;
-  if(category == undefined){
+  if(category == undefined && seller == undefined){
     result = await prisma.products.findMany({include: {categories: true, sellers: true, ecommercelinks: true}});
   } else {
-    result = await prisma.products.findMany({
-      where: {category_id: Number(category)},
-      include: {
-        categories: true,
-        sellers: true,
-        ecommercelinks: true
-      }
-    });
+    if(category != undefined){
+      result = await prisma.products.findMany({
+        where: {category_id: Number(category)},
+        include: {
+          categories: true,
+          sellers: true,
+          ecommercelinks: true
+        }
+      });
+    } else if(seller != undefined){
+      result = await prisma.products.findMany({
+        where: {seller_id: Number(seller)},
+        include: {
+          categories: true,
+          sellers: true,
+          ecommercelinks: true
+        }
+      });
+    } else {
+      result = await prisma.products.findMany({
+        where: {seller_id: Number(seller), category_id: Number(category)},
+        include: {
+          categories: true,
+          sellers: true,
+          ecommercelinks: true
+        }
+      });
+    }   
   }
 
   const payload = result.map((rs) => ({
@@ -232,17 +251,57 @@ const updateProductByIdHandler = async (req, res) => {
   const {product_id} = req.params
   const {name, category_id, image_url, address} = req.body;
   const updatedAt = formatMySQLDate(new Date());
-  const checkId = await prisma.products.findFirst({where: {product_id: Number(product_id)}});
+  const productExist = await prisma.products.findFirst({where: {product_id: Number(product_id)}});
 
-  if(!checkId) {
+  if(!productExist) {
     return res.status(404).json({
       status: 'fail',
       message: 'id product not found'
     })
   }
 
+  const imageUrl = productExist.image_url;
+  // check image file upload
+  if(req.file){
+    const imageName = `product_images/${new Date().toISOString()}-${req.file.originalname.replace(/ /g, "_")}`;
+    const file = bucket.file(imageName);
+
+    const stream = file.createWriteStream({
+      metadata: {
+        contentType: req.file.mimetype
+      }
+    })
+
+    // error handling upload image
+    stream.on('error', (err) => {
+      return res.status(500).json({
+        status: 'fail',
+        message: 'Failed to upload image to GCS',
+        error: err.message
+      })
+    })
+
+    // finish upload image
+    await new Promise((resolve, reject) => {
+      stream.on('finish', resolve);
+      stream.on(req.file.buffer);
+    })
+
+    // URL akses publik file baru
+    imageUrl = `https://storage.googleapis.com/${bucketName}/${imageName}`;
+
+    // delete old image file
+    if(productExist.image_url){
+      const oldFileName = productExist.image_url.split('/').pop();
+      const oldFile = bucket.file(`product_images/${oldFileName}`);
+      await oldFile.delete().catch((err) => {
+        console.log('Failed to delete old image', err.message);
+      });
+    }
+  }
+
   const payload = {
-    name, category_id, image_url, address, updated_at: new Date(updatedAt)
+    name, category_id, image_url: imageUrl, address, updated_at: new Date(updatedAt)
   }
   const result = await prisma.products.update({
     data: payload,
@@ -265,10 +324,10 @@ const updateProductByIdHandler = async (req, res) => {
 
 const deleteProductByIdHandler = async (req, res) => {
   const {product_id} = req.params;
-  const checkId = await prisma.products.findFirst({where: {product_id: Number(product_id)}});
+  const checkProduct = await prisma.products.findFirst({where: {product_id: Number(product_id)}});
   const checkLink = await prisma.ecommercelinks.findMany({where: {product_id: Number(product_id)}});
   const checkFav = await prisma.favorites.findMany({where: {product_id: Number(product_id)}});
-  if(!checkId){
+  if(!checkProduct){
     return res.status(404).json({
       status: 'fail',
       message: 'id product not found'
@@ -287,6 +346,14 @@ const deleteProductByIdHandler = async (req, res) => {
       status: 'fail',
       message: 'internal server error'
     })
+  }
+  // delete old image file
+  if(checkProduct.image_url){
+    const oldFileName = checkProduct.image_url.split('/').pop();
+    const oldFile = bucket.file(`product_images/${oldFileName}`);
+    await oldFile.delete().catch((err) => {
+      console.log('Failed to delete old image', err.message);
+    });
   }
   
   return res.status(200).json({
