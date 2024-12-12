@@ -59,10 +59,6 @@ app.use('/auth/google', googleAuth)
 const authLogin = require("./src/routes/auth");
 app.use('/api',authLogin)
 
-// import route posts
-const postRoute = require("./src/routes/posts");
-app.use("/api/posts", postRoute)
-
 // import route category
 const categoryRoute = require('./src/routes/categories');
 app.use('/api/categories', categoryRoute);
@@ -78,6 +74,10 @@ app.use("/api/links", linkRoute)
 // import route favorite
 const favoriteRoute = require("./src/routes/favorites");
 app.use("/api/favorites", favoriteRoute)
+
+// import route profile
+const profileRoute = require("./src/routes/profile");
+app.use("/api/profile", profileRoute)
 
 // route
 app.get("/", (req, resp) => {

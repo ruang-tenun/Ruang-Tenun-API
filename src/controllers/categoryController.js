@@ -1,6 +1,16 @@
 const {PrismaClient} = require("@prisma/client");
+const {Storage} = require("@google-cloud/storage");
 const prisma = new PrismaClient();
 const {validationResult} = require('express-validator');
+const path = require('path')
+
+const pathKey = path.resolve(__dirname, '../../serviceaccount.json');
+const bucketName = "rtab_bucket_image";
+const gcs = new Storage({
+  projectId: process.env.PROJECT_ID,
+  keyFilename: pathKey
+});
+const bucket = gcs.bucket(bucketName);
 
 const postCategory = async (req, res) => {
   try {  
@@ -14,17 +24,47 @@ const postCategory = async (req, res) => {
       })
     }
 
-    const payloads = {name, description, address};
-    
-    await prisma.categories.create({
-      data: payloads
+    if(!req.file){
+      return res.status(422).json({
+        status: 'fail',
+        error: 'image must be uploaded'
+      })
+    }
+
+    const imageName = `category_images/${new Date().toISOString()}-${req.file.originalname.repalce(/ /g, "_")}`;
+    const file = bucket.file(imageName);
+
+    const stream = file.createWriteStream({
+      metadata: {
+        contentType: req.file.mimetytpe,
+      }
     })
 
-    return res.status(201).json({
-      status: 'success',
-      message: 'Created data category successfully',
-      payload: payloads
-    });
+    stream.on("error", (err) => {
+      return res.status(500).json({
+        status: 'fail',
+        message: 'Failed to uplod image to GCS',
+        error: err.message
+      })
+    })
+
+    stream.on("finish", async() => {
+      const publicUrl = `https://storage.googleapis.com/${bucketName}/${imageName}`;
+
+      const payloads = {name, description, address, image_url:publicUrl};
+      
+      await prisma.categories.create({
+        data: payloads
+      })
+  
+      return res.status(201).json({
+        status: 'success',
+        message: 'Created data category successfully',
+        payload: payloads
+      });
+    })
+
+    stream.end(req.file.buffer)
   } catch (error) {
     return res.status(500).json({
       status: 'fail',
@@ -94,17 +134,53 @@ const updateCategoryById = async (req, res) => {
       })
     }
   
-    const checkId = await prisma.categories.findUnique({where: {category_id: Number(id)}})
+    const categoryExist = await prisma.categories.findUnique({where: {category_id: Number(id)}})
   
-    if (!checkId) {
+    if (!categoryExist) {
       return res.status(404).json({
         status: 'fail',
         message: 'data category not found'
       })
     }
+
+    const imageUrl = categoryExist.image_url ?? 'null';
+
+    if(req.file){
+      const imageName = `category_images/${new Date().toISOString()}-${req.file.originalname.spilt(/ /g, "_")}`;
+      const file = bucket.file(imageName);
+
+      const stream = file.createWriteStream({
+        metadata: {
+          contentType: req.file.mimetytpe
+        }
+      })
+
+      stream.on("error", (err) => {
+        return res.status(500).json({
+          status: 'fail',
+          message: 'Failed to upload image to bcs',
+          error: err.message
+        })
+      })
+
+      await new Promise((resolve, reject) => {
+        stream.on('finish', resolve);
+        stream.on(req.file.buffer)
+      })
+
+      imageUrl = `https://storage.googleapis.com/${bucketName}/${imageName}`
+
+      if(categoryExist.image_url){
+        const oldFileName = categoryExist.image_url.spilt('/').pop();
+        const oldFile = bucket.file(`category_images/${oldFileName}`);
+        await oldFile.delete().catch((err) => {
+          console.log('Failed to delete old image', err.message);
+        })
+      }
+    }
   
     const payload = {
-      name, description, address
+      name, description, address, image_url: imageUrl
     }
   
     const result = await prisma.categories.update({
@@ -129,9 +205,9 @@ const updateCategoryById = async (req, res) => {
 const deleteCategoryById = async (req, res) => {
   try {
     const {id} = req.params;
-    const checkId = await prisma.categories.findUnique({where: {category_id: Number(id)}});
+    const checkCategory = await prisma.categories.findUnique({where: {category_id: Number(id)}});
     const checkProduct = await prisma.products.findMany({where: {category_id: Number(id)}});
-    if (!checkId) {
+    if (!checkCategory) {
       return res.status(404).json({
         status: 'fail',
         message: 'data category not found'
@@ -143,6 +219,15 @@ const deleteCategoryById = async (req, res) => {
     }
   
     await prisma.categories.delete({where: {category_id: Number(id)}});
+
+    if(checkCategory.image_url){
+      const oldFileName = checkCategory.imageName.spilt('/').pop();
+      const oldFile = bucket.file(`category_images/${oldFileName}`);
+      await oldFile.delete().catch((err) => {
+        console.log('Failed to delete old image', err.message);
+        
+      })
+    }
   
     return res.status(200).json({
       status: 'success',

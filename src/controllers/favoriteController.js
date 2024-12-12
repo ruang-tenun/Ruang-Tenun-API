@@ -7,7 +7,14 @@ const formatMySQLDate = require("../middlewares/formattedDateSql");
 
 const getAllFavoriteHandler = async (req, res) => {
   try {
-    const result = await prisma.favorites.findMany({include: {users: true, products: true}});
+    const {user} = req.query;
+    console.log(user);
+    let result
+    if(user == undefined){
+      result = await prisma.favorites.findMany({include: {users: true, products: true}});
+    } else {
+      result = await prisma.favorites.findMany({where: {user_id: Number(user)}, include: {users: true, products: true}});
+    }
 
     const payload = result.map((rs) => ({
       favorite_id: rs.favorite_id,
