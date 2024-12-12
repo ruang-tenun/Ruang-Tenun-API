@@ -6,7 +6,7 @@ const formatMySQLDate = require("../middlewares/formattedDateSql");
 const path = require('path');
 
 const pathKey = path.resolve(__dirname, "../../serviceaccount.json");
-const bucketName = "rtab_bucket_image";
+const bucketName = "rtab-bucket-image";
 const gcs = new Storage({
   projectId: process.env.PROJECT_ID,
   keyFilename: pathKey,
