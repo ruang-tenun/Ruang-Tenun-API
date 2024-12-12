@@ -249,7 +249,7 @@ const updateProductByIdHandler = async (req, res) => {
   }
 
   const {product_id} = req.params
-  const {name, category_id, image_url, address} = req.body;
+  const {name, category_id, address} = req.body;
   const updatedAt = formatMySQLDate(new Date());
   const productExist = await prisma.products.findFirst({where: {product_id: Number(product_id)}});
 
@@ -260,7 +260,7 @@ const updateProductByIdHandler = async (req, res) => {
     })
   }
 
-  const imageUrl = productExist.image_url;
+  const imageUrl = productExist.image_url ?? "null";
   // check image file upload
   if(req.file){
     const imageName = `product_images/${new Date().toISOString()}-${req.file.originalname.replace(/ /g, "_")}`;

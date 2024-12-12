@@ -59,10 +59,6 @@ app.use('/auth/google', googleAuth)
 const authLogin = require("./src/routes/auth");
 app.use('/api',authLogin)
 
-// import route posts
-const postRoute = require("./src/routes/posts");
-app.use("/api/posts", postRoute)
-
 // import route category
 const categoryRoute = require('./src/routes/categories');
 app.use('/api/categories', categoryRoute);
