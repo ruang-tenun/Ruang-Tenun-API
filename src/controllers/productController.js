@@ -69,7 +69,7 @@ const postProductHandler = async (req, res) => {
     });
   }
 
-  const imageName = `product_images/${new Date().toISOString()} -${req.file.originalname.replace(/ /g, "_")}`;
+  const imageName = `product_images/${new Date().toISOString()}-${req.file.originalname.replace(/ /g, "_")}`;
   const file = bucket.file(imageName);
 
   const stream = file.createWriteStream({
@@ -91,13 +91,14 @@ const postProductHandler = async (req, res) => {
     const publicUrl = `https://storage.googleapis.com/${bucketName}/${imageName}`;
 
     const { name, category_id, seller_id, address, longitude, latitude } = req.body;
+    const { ecommerce_url, ecommerce_name } = req.body;
     const createdAt = formatMySQLDate(new Date());
 
     const payloads = {
       name,
       address,
-      latitude: parseFloat(latitude),
-      longitude: parseFloat(longitude),
+      latitude: latitude,
+      longitude: longitude,
       category_id: parseInt(category_id),
       seller_id: parseInt(seller_id),
       image_url: publicUrl,
@@ -109,6 +110,14 @@ const postProductHandler = async (req, res) => {
       const result = await prisma.products.create({
         data: payloads,
       });
+
+      await prisma.ecommercelinks.create({
+        data: {
+          product_id: result.product_id,
+          ecommerce_name,
+          link_url: ecommerce_url
+        }
+      })
 
       return res.status(201).json({
         status: "success",

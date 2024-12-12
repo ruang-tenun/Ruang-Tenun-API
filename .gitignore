@@ -3,4 +3,5 @@ node_modules
 ./src/routes/posts.js
 ./config/database.js
 config
+serviceaccount_old.json
 serviceaccount.json
