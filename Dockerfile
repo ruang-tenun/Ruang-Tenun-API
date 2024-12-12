@@ -1,5 +1,14 @@
 FROM node:18-alpine
 
+# Install packages needed to build node modules
+RUN apk update && apk add --no-cache \
+    python3 \
+    py3-pip \
+    make \
+    g++ \
+    openssl \
+    pkgconfig
+
 WORKDIR /app
 
 COPY package*.json ./
@@ -11,8 +20,6 @@ COPY prisma ./prisma
 RUN npx prisma generate
 
 COPY . .
-
-ENV PORT 3000
 
 EXPOSE 3000
 
