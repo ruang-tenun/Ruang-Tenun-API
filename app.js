@@ -61,7 +61,7 @@ app.use('/api',authLogin)
 
 // import route category
 const categoryRoute = require('./src/routes/categories');
-app.use('/api/categories', categoryRoute);
+app.use('/api/categories', upload.single('image_url'), categoryRoute);
 
 // import route product
 const productRoute = require('./src/routes/products');
