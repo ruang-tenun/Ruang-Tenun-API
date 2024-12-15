@@ -31,7 +31,7 @@ const postCategory = async (req, res) => {
       })
     }
 
-    const imageName = `category_images/${new Date().toISOString()}-${req.file.originalname.repalce(/ /g, "_")}`;
+    const imageName = `category_images/${new Date().toISOString()}-${req.file.originalname.replace(/ /g, "_")}`;
     const file = bucket.file(imageName);
 
     const stream = file.createWriteStream({
@@ -145,8 +145,8 @@ const updateCategoryById = async (req, res) => {
 
     const imageUrl = categoryExist.image_url ?? 'null';
 
-    if(req.file){
-      const imageName = `category_images/${new Date().toISOString()}-${req.file.originalname.spilt(/ /g, "_")}`;
+    if(!req.file){
+      const imageName = `category_images/${new Date().toISOString()}-${req.file.originalname.replace(/ /g, "_")}`;
       const file = bucket.file(imageName);
 
       const stream = file.createWriteStream({
